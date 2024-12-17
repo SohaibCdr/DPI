@@ -17,7 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Patient,UserCredentials
+from .models import Patient,UserCredentials,Dpi
 from .serializers   import PatientSerializer
 from django.contrib.contenttypes.models import ContentType
 
@@ -30,52 +30,71 @@ class ProtectedView(APIView):
 @csrf_exempt  # Disable CSRF for testing with Postman (ensure you handle it properly in production)
 def register_patient(request):
     if request.method == 'POST':
-        # Parse the JSON data from the request body
+        
         data = json.loads(request.body)
         password = data.get('password')  
         email = data.get('email')
 
+        
         if Patient.objects.filter(email=email).exists():
             return JsonResponse({'status': 'error', 'message': 'Email already in use'}, status=400)
+
         
         validator = EmailValidator()
         try:
             validator(email)
         except ValidationError:
             return JsonResponse({'status': 'error', 'message': 'Invalid email format'}, status=400)
+
+        # Hash the password
         hashed_password = make_password(password)
-    
+
+        
         patient = Patient(
-            password=hashed_password,
-            name = data.get('name'),
+            name=data.get('name'),
             email=email,
-            phoneNumber = data.get('phoneNumber'),
-            SSN = data.get('SSN'),
-            dateOfBirth = data.get('dateOfBirth'),
-            gender = data.get('Gender'),
-            emergencyContactName = data.get('emergencyContactName'),
-            emergencyContactPhone = data.get('emergencyContactPhone'),
+            phoneNumber=data.get('phoneNumber'),
+            SSN=data.get('SSN'),
+            dateOfBirth=data.get('dateOfBirth'),
+            gender=data.get('Gender'),
+            emergencyContactName=data.get('emergencyContactName'),
+            emergencyContactPhone=data.get('emergencyContactPhone'),
         )
         patient.save()
+
+        
         credentials = UserCredentials.objects.create(
-        content_type=ContentType.objects.get_for_model(Patient),
-        object_id=patient.id,
-        email=patient.email,
-        password=hashed_password
+            content_type=ContentType.objects.get_for_model(Patient),
+            object_id=patient.id,
+            email=patient.email,
+            password=hashed_password
         )
+
+        # Create the DPI instance for the patient
+        dpi = Dpi.objects.create(patient=patient)
 
         # Generate JWT tokens
         refresh = RefreshToken.for_user(patient)
+        access_token = str(refresh.access_token)
+
         # Return success response
-        return JsonResponse({'status': 'success', 'message': 'Patient registration successful','data': {
-        'id': patient.id,
-        'name': patient.name,
-        'email': patient.email,
-    },}, status=201)
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Patient registration successful',
+            'data': {
+                'id': patient.id,
+                'name': patient.name,
+                'email': patient.email,
+                'dpi_id': dpi.id,  
+            },
+            'tokens': {
+                'refresh': str(refresh),
+                'access': access_token
+            }
+        }, status=201)
 
     else:
         return JsonResponse({'status': 'error', 'message': 'Only POST method is allowed'}, status=405)
-
 
 
 
