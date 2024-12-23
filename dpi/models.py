@@ -5,42 +5,52 @@ from django.contrib.contenttypes.models import ContentType
 
 # Create your models here.
 
-
 class Hospital(models.Model):
     name= models.CharField(max_length=50,unique=True)
     address= models.CharField(max_length=100,unique=True)
     created = models.DateTimeField(auto_now_add=True,null=True)
     def __str__(self):
-        return self.name
-    
+        return self.name   
 
 
 class Actor(models.Model):
     name = models.CharField(max_length=50)
     phoneNumber =  models.CharField(max_length=10)                   # blank=True, null=True
-    SSN = models.CharField(max_length=50)
-    dateAdded = models.DateTimeField(auto_now_add=True)
-    created = models.DateTimeField(auto_now_add=True,null=True)
-    email = models.CharField(max_length=50, unique=True , null=True)
+    SSN = models.CharField(max_length=50 , unique=True)
+    dateAdded = models.DateTimeField(auto_now_add=True,null=True)
+    email = models.CharField(max_length=50, unique=True,null=True)
 
     def __str__(self):
         return self.name	
     
     class Meta:
-        ordering = ['-created']
+        ordering = ['-dateAdded']
         abstract = True  # This makes it an abstract model
 
 
 class Doctor(Actor):
-	specialty = models.CharField(max_length=100) 
-     
+    specialty = models.CharField(max_length=100) 
+    hospital = models.ForeignKey(
+        Hospital,
+        related_name='doctors',  # Unique related_name
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
 
 class Patient(Actor):
+    address =models.CharField(max_length=200,null=True)
     gender=models.CharField(max_length=10)
-    dateOfBirth = models.DateField(null=True, blank=True)
-    emergencyContactName = models.CharField(max_length=50,blank=True, null=True)
-    emergencyContactPhone= models.CharField(max_length=10,blank=True, null=True)
-    updated = models.DateTimeField(auto_now=True)	
+    dateOfBirth = models.DateField(null=True)
+    emergencyContactName = models.CharField(max_length=50, null=True)
+    emergencyContactPhone= models.CharField(max_length=10, null=True)
+    updated = models.DateTimeField(auto_now=True)
+    hospital = models.ForeignKey(
+        Hospital,
+        related_name='patients',  # Unique related_name
+        on_delete=models.SET_NULL,
+        null=True
+    )	
     @property
     def age(self):
         if self.dateOfBirth:
@@ -49,11 +59,41 @@ class Patient(Actor):
                 (today.month, today.day) < (self.dateOfBirth.month, self.dateOfBirth.day)
             )
         return None
-    class Meta:
-        ordering = ['-updated', '-created']
+    
 
 class  Administrative (Actor):
-    pass
+    hospital = models.ForeignKey(
+        Hospital,
+        related_name='administratives',  # Unique related_name
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
+class  Nurse (Actor):
+    hospital = models.ForeignKey(
+        Hospital,
+        related_name='nurses',  # Unique related_name
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
+
+class  Radiologist (Actor):
+    hospital = models.ForeignKey(
+        Hospital,
+        related_name='radilogists',  # Unique related_name
+        on_delete=models.SET_NULL,
+        null=True
+    )
+
+
+class  Laborantin (Actor):
+    hospital = models.ForeignKey(
+        Hospital,
+        related_name='laborantins',  # Unique related_name
+        on_delete=models.SET_NULL,
+        null=True
+    )
 
 
 
@@ -63,6 +103,9 @@ class UserCredentials(models.Model):
     actor = GenericForeignKey('content_type', 'object_id')
     email = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=128)
+
+
+
 
 
 
@@ -77,7 +120,7 @@ class Dpi (models.Model):
 class prescription (models.Model):
     issueDate = models.CharField(max_length=10)
     validationDate=models.CharField(max_length=10)
-    dpi = models.OneToOneField(Dpi, on_delete=models.CASCADE)
+    dpi = models.ForeignKey(Dpi, on_delete=models.CASCADE)
     def __str__(self):
         return f"Prescription for {self.dpi.patient.user.username}"
 
