@@ -38,3 +38,11 @@ class AdministrativeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Administrative
         fields = ['id', 'name','email', 'phoneNumber', 'SSN', 'dateAdded', 'role']
+
+
+class LaborantinSerializer(serializers.ModelSerializer):
+    role = serializers.CharField(default='administrative', read_only=True)  
+    
+    class Meta:
+        model = Administrative
+        fields = ['id', 'name','email', 'phoneNumber', 'SSN', 'dateAdded', 'role']

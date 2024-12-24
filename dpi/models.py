@@ -9,6 +9,12 @@ class Hospital(models.Model):
     name= models.CharField(max_length=50,unique=True)
     address= models.CharField(max_length=100,unique=True)
     created = models.DateTimeField(auto_now_add=True,null=True)
+    # Counter fields for workers
+    doctor_count = models.IntegerField(default=0)
+    nurse_count = models.IntegerField(default=0)
+    administrative_count = models.IntegerField(default=0)
+    radiologist_count = models.IntegerField(default=0)
+    laborantin_count = models.IntegerField(default=0)
     def __str__(self):
         return self.name   
 

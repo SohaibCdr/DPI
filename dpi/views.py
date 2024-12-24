@@ -18,7 +18,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Patient,UserCredentials,Dpi,Nurse,Administrative,Doctor,Radiologist,Laborantin,Hospital
-from .serializers   import PatientSerializer,DoctorSerializer,RadiologistSerializer,NurseSerializer,AdministrativeSerializer
+from .serializers   import PatientSerializer,DoctorSerializer,RadiologistSerializer,NurseSerializer,AdministrativeSerializer,LaborantinSerializer
 from django.contrib.contenttypes.models import ContentType
 from .backends import generate_password , send_password_email
 
@@ -227,6 +227,19 @@ class RegisterWorkerView(APIView):
                 worker_data['specialty'] = specialty
 
             worker = worker_model.objects.create(**worker_data)
+
+            # Increment the appropriate hospital counter
+            if role == 'doctor':
+                hospital.doctor_count += 1
+            elif role == 'nurse':
+                hospital.nurse_count += 1
+            elif role == 'administrative':
+                hospital.administrative_count += 1
+            elif role == 'radiologist':
+                hospital.radiologist_count += 1
+            elif role == 'laborantin':
+                hospital.laborantin_count += 1
+            hospital.save()
 
             # Generate password
             password = generate_password()
@@ -440,3 +453,150 @@ class GetAllWorkersView(APIView):
             'status': 'success',
             'data': combined_data
         }, status=status.HTTP_200_OK)
+
+
+
+
+
+class GetHospitalView(APIView):
+    def get(self, request):
+        hospital_name = request.query_params.get('name')  # Fetch the hospital name from query params
+
+        if not hospital_name:
+            return Response({'status': 'error', 'message': 'Hospital name is required as a query parameter'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            hospital = Hospital.objects.get(name=hospital_name)
+            
+            data = {
+                'name': hospital.name,
+                'address': hospital.address,
+                'created': hospital.created,
+                'counters': {
+                    'doctor_count': hospital.doctor_count,
+                    'nurse_count': hospital.nurse_count,
+                    'administrative_count': hospital.administrative_count,
+                    'radiologist_count': hospital.radiologist_count,
+                    'laborantin_count': hospital.laborantin_count,
+                }
+            }
+
+            return Response({'status': 'success', 'data': data}, status=status.HTTP_200_OK)
+        except Hospital.DoesNotExist:
+            return Response({'status': 'error', 'message': 'Hospital not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'status': 'error', 'message': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+class UpdateWorkerView(APIView):
+    def put(self, request):
+        data = request.data
+        role = data.get('role')
+        worker_id = data.get('id')
+
+        if not role or not worker_id:
+            return Response({'status': 'error', 'message': 'Role and worker ID are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Role to serializer mapping
+        worker_roles = {
+            'doctor': (Doctor, DoctorSerializer),
+            'nurse': (Nurse, NurseSerializer),
+            'administrative': (Administrative, AdministrativeSerializer),
+            'radiologist': (Radiologist, RadiologistSerializer),
+            'laborantin': (Laborantin, LaborantinSerializer),
+        }
+
+        worker_model, worker_serializer = worker_roles.get(role, (None, None))
+        if not worker_model:
+            return Response({'status': 'error', 'message': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            worker = worker_model.objects.get(id=worker_id)
+
+            # Use serializer to update worker with partial=True
+            serializer = worker_serializer(worker, data=data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'status': 'success', 'message': f'{role.capitalize()} updated successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
+            return Response({'status': 'error', 'message': 'Invalid data', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        except worker_model.DoesNotExist:
+            return Response({'status': 'error', 'message': f'{role.capitalize()} with ID {worker_id} not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'status': 'error', 'message': f'Error updating {role}: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+
+class DeleteWorkerView(APIView):
+    def delete(self, request):
+        data = request.data
+        role = data.get('role')
+        worker_id = data.get('id')
+
+        if not role or not worker_id:
+            return Response({'status': 'error', 'message': 'Role and worker ID are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        worker_roles = {
+            'doctor': Doctor,
+            'nurse': Nurse,
+            'administrative': Administrative,
+            'radiologist': Radiologist,
+            'laborantin': Laborantin,
+        }
+
+        worker_model = worker_roles.get(role)
+        if not worker_model:
+            return Response({'status': 'error', 'message': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            worker = worker_model.objects.get(id=worker_id)
+
+            # Decrement the counter in the associated hospital
+            if worker.hospital:
+                hospital = worker.hospital
+                role_to_counter = {
+                    'doctor': 'doctor_count',
+                    'nurse': 'nurse_count',
+                    'administrative': 'administrative_count',
+                    'radiologist': 'radiologist_count',
+                    'laborantin': 'laborantin_count',
+                }
+                counter_field = role_to_counter.get(role)
+
+                if counter_field:
+                    current_count = getattr(hospital, counter_field, 0)
+                    new_count = max(current_count - 1, 0)
+                    setattr(hospital, counter_field, new_count)
+                    hospital.save()
+
+            # Delete the associated credentials
+            credentials = UserCredentials.objects.get(
+                content_type=ContentType.objects.get_for_model(worker_model),
+                object_id=worker.id
+            )
+            credentials.delete()
+
+            # Delete the worker
+            worker.delete()
+
+            return Response({
+                'status': 'success',
+                'message': f'{role.capitalize()} with ID {worker_id} deleted successfully and counters updated'
+            }, status=status.HTTP_200_OK)
+
+        except worker_model.DoesNotExist:
+            return Response({'status': 'error', 'message': f'{role.capitalize()} with ID {worker_id} not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        except UserCredentials.DoesNotExist:
+            return Response({'status': 'error', 'message': 'Credentials not found for this worker'}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({'status': 'error', 'message': f'Error deleting {role}: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
