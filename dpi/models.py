@@ -102,13 +102,6 @@ class  Laborantin (Actor):
     )
 
 
-class  Administrator (Actor):
-    hospital = models.ForeignKey(
-        Hospital,
-        related_name='administrator',  # Unique related_name
-        on_delete=models.SET_NULL,
-        null=True
-    )
 
 class UserCredentials(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -123,64 +116,3 @@ class UserCredentials(models.Model):
 
 
 
-class Dpi (models.Model):
-    createdAt = models.DateTimeField(auto_now_add=True,null=True)
-    patient = models.OneToOneField(Patient, on_delete=models.CASCADE)
-    def __str__(self):
-        return f"DPI of {self.patient.user.username}"
-    
-
-class prescription (models.Model):
-    issueDate = models.CharField(max_length=10)
-    validationDate=models.CharField(max_length=10)
-    dpi = models.ForeignKey(Dpi, on_delete=models.CASCADE)
-    def __str__(self):
-        return f"Prescription for {self.dpi.patient.user.username}"
-
-
-class Care (models.Model):
-    observation = models.CharField(max_length=500)
-    dpi = models.ForeignKey(Dpi, on_delete=models.CASCADE)
-    def __str__(self):
-        return f"Prescription for {self.dpi.patient.user.username}"
-
-
-
-class   MedicalCondition (models.Model):
-    date=models.CharField(max_length=10)
-    type= models.CharField(max_length=100)
-    dpi = models.ForeignKey(Dpi, on_delete=models.CASCADE)
-    def __str__(self):
-        return f"Condition for {self.dpi.patient.user.username}"
-
-
-
-# Test model (now with type differentiation)
-class Test(models.Model):
-    TEST_TYPES = (
-        ('bloodwork', 'Bloodwork'),
-        ('scan', 'Scan'),
-    )
-    type = models.CharField(max_length=50, choices=TEST_TYPES)
-    issueDate = models.DateField()
-    conductionDate = models.DateField()
-    status = models.CharField(max_length=10)
-    dpi = models.ForeignKey(Dpi, on_delete=models.CASCADE)
-    created = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.get_type_display()} test for {self.dpi.patient.user.username}"
-
-
-
-# Bloodwork model (if still needed)
-class Bloodwork(models.Model):
-    test = models.OneToOneField(Test, on_delete=models.CASCADE, related_name="bloodwork")
-    results = models.TextField()
-
-
-# Scan model (if still needed)
-class Scan(models.Model):
-    test = models.OneToOneField(Test, on_delete=models.CASCADE, related_name="scan")
-    image = models.ImageField(upload_to='examinations/', blank=True, null=True)
-    

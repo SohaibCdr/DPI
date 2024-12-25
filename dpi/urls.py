@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import ProtectedView,PatientListView,GetAllWorkersView,CreateHospitalView,PatientDetailView,SearchPatient_by_SSN,Edit_patient_info,RegisterWorkerView,LoginView,RegisterPatientView
-from .views import GetHospitalView,UpdateWorkerView,DeleteWorkerView,HospitalListView,PatientGraphDataView,SearchWorkerView
+from .views import ProtectedView,PatientListView,GetAllWorkersView,CreateHospitalView,PatientDetailView,Search_by_SSN,Edit_patient_info,RegisterWorkerView,LoginView,RegisterPatientView
+from .views import GetHospitalView,UpdateWorkerView,DeleteWorkerView
+from . import views
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -16,14 +17,11 @@ urlpatterns = [
     path('api/register/patient/', RegisterPatientView.as_view(), name='register_patient'),
     path('api/patients/', PatientListView.as_view(), name='patient-list'),
     path('api/patients/<int:pk>/', PatientDetailView.as_view(), name='patient-detail'),
-    path('api/search-patient/<str:SSN>/',SearchPatient_by_SSN.as_view(), name="search_by_SSN"),
+    path('api/search/<str:SSN>/',Search_by_SSN.as_view(), name="search_by_SSN"),
     path('api/patient/edit/<int:pk>/', Edit_patient_info.as_view(), name='edit_patient'),
     path('api/register/worker/',RegisterWorkerView.as_view(), name='register_worker'),
     path('api/workers/', GetAllWorkersView.as_view(), name='get_all_workers'),
     path('api/hospital/', GetHospitalView.as_view(), name='get_hospital'),
     path('api/worker/edit/', UpdateWorkerView.as_view(), name='update_worker'),
     path('api/worker/delete', DeleteWorkerView.as_view(), name='delete-worker'),
-    path('api/hospitals/', HospitalListView.as_view(), name='hospital-list'),
-    path('api/patient-graph-data/', PatientGraphDataView.as_view(), name='patient-graph-data'),
-    path('api/search-worker/', SearchWorkerView.as_view(), name='search-worker'),
 ]

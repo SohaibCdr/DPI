@@ -18,7 +18,8 @@ def replace_problematic_characters(password: str) -> str:
 def generate_password(length=12):
     # Define allowed characters (excluding problematic ones)
     allowed_chars = string.ascii_letters + string.digits + string.punctuation
-    password = ''.join(random.choice(allowed_chars) for _ in range(length))
+    password = "mypassword"
+    # password = ''.join(random.choice(allowed_chars) for _ in range(length))
     
     # Replace problematic characters
     sanitized_password = replace_problematic_characters(password)
