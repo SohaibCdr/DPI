@@ -18,11 +18,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Patient,UserCredentials,Dpi,Nurse,Administrative,Doctor,Radiologist,Laborantin,Hospital
-from .serializers   import PatientSerializer,DoctorSerializer,RadiologistSerializer,NurseSerializer,AdministrativeSerializer,LaborantinSerializer
+from .serializers   import PatientSerializer,DoctorSerializer,RadiologistSerializer,NurseSerializer,AdministrativeSerializer,LaborantinSerializer,HospitalSerializer
 from django.contrib.contenttypes.models import ContentType
 from .backends import generate_password , send_password_email
-
-
+from rest_framework.pagination import PageNumberPagination
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+from datetime import datetime, timedelta
+from django.db.models import Q
 
 
 
@@ -333,8 +336,8 @@ class LoginView(APIView):
                 'status': 'success',
                 'message': 'Login successful',
                 'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'role': role,
+                'token': str(refresh.access_token),
+                'actor-type': role,
                 'actor_id': actor.id
             }, status=status.HTTP_200_OK)
 
@@ -348,9 +351,12 @@ class LoginView(APIView):
 
 
 
-class PatientListView(APIView):
+
+
+class PatientListView(APIView, PageNumberPagination):
+    page_size = 10  # Default number of items per page
+
     def get(self, request):
-        # Get the hospital name from query parameters
         hospital_name = request.query_params.get('hospital')
 
         if not hospital_name:
@@ -363,8 +369,11 @@ class PatientListView(APIView):
 
         patients = Patient.objects.filter(hospital=hospital)
 
-        serializer = PatientSerializer(patients, many=True)
-        return Response({'status': 'success', 'data': serializer.data}, status=status.HTTP_200_OK)
+        # Paginate the patients
+        paginated_patients = self.paginate_queryset(patients, request, view=self)
+        serializer = PatientSerializer(paginated_patients, many=True)
+
+        return self.get_paginated_response({'status': 'success', 'data': serializer.data})
 
 
 
@@ -383,7 +392,7 @@ class PatientDetailView(APIView):
 
 
 
-class Search_by_SSN (APIView):
+class SearchPatient_by_SSN (APIView):
     def get(self,request,SSN):
         try : 
             patient = Patient.objects.get(SSN=SSN)
@@ -416,7 +425,22 @@ class Edit_patient_info (APIView):
 
 
 
+
 class GetAllWorkersView(APIView):
+    class CustomPagination(PageNumberPagination):
+        page_size = 10  # Default number of items per page
+        page_size_query_param = 'page_size'  # Allow client to set page size
+        max_page_size = 50  # Maximum page size
+    
+    def get_paginated_response(self, queryset, serializer_class, request):
+        paginator = self.CustomPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        if page is not None:
+            serializer = serializer_class(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        serializer = serializer_class(queryset, many=True)
+        return Response(serializer.data)
+
     def get(self, request):
         # Get the hospital name from the query parameters
         hospital_name = request.query_params.get('hospital', None)
@@ -429,30 +453,41 @@ class GetAllWorkersView(APIView):
         except Hospital.DoesNotExist:
             return Response({'status': 'error', 'message': 'Hospital not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Filter workers based on the hospital
-        doctors = Doctor.objects.filter(hospital=hospital)
-        nurses = Nurse.objects.filter(hospital=hospital)
-        radiologists = Radiologist.objects.filter(hospital=hospital)
-        administrative_workers = Administrative.objects.filter(hospital=hospital)
+        # Paginate workers based on the hospital
+        doctor_data = self.get_paginated_response(
+            Doctor.objects.filter(hospital=hospital),
+            DoctorSerializer,
+            request
+        )
+        nurse_data = self.get_paginated_response(
+            Nurse.objects.filter(hospital=hospital),
+            NurseSerializer,
+            request
+        )
+        radiologist_data = self.get_paginated_response(
+            Radiologist.objects.filter(hospital=hospital),
+            RadiologistSerializer,
+            request
+        )
+        administrative_data = self.get_paginated_response(
+            Administrative.objects.filter(hospital=hospital),
+            AdministrativeSerializer,
+            request
+        )
 
-        # Serialize the data for each worker type
-        doctor_serializer = DoctorSerializer(doctors, many=True)
-        nurse_serializer = NurseSerializer(nurses, many=True)
-        radiologist_serializer = RadiologistSerializer(radiologists, many=True)
-        administrative_serializer = AdministrativeSerializer(administrative_workers, many=True)
-
-        # Combine the serialized data into one response
+        # Combine the paginated data into one response
         combined_data = {
-            'doctors': doctor_serializer.data,
-            'nurses': nurse_serializer.data,
-            'radiologists': radiologist_serializer.data,
-            'administrative': administrative_serializer.data,
+            'doctors': doctor_data.data,
+            'nurses': nurse_data.data,
+            'radiologists': radiologist_data.data,
+            'administrative': administrative_data.data,
         }
 
         return Response({
             'status': 'success',
             'data': combined_data
         }, status=status.HTTP_200_OK)
+
 
 
 
@@ -600,3 +635,105 @@ class DeleteWorkerView(APIView):
 
         except Exception as e:
             return Response({'status': 'error', 'message': f'Error deleting {role}: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+class HospitalListView(APIView):
+    def get(self, request):
+        hospitals = Hospital.objects.all()
+        serializer = HospitalSerializer(hospitals, many=True)
+        return Response({
+            'status': 'success',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+
+
+
+
+
+
+
+class PatientGraphDataView(APIView):
+    def get(self, request):
+        hospital_name = request.query_params.get('hospital')
+
+        if not hospital_name:
+            return Response({'status': 'error', 'message': 'Hospital name is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            hospital = Hospital.objects.get(name=hospital_name)
+        except Hospital.DoesNotExist:
+            return Response({'status': 'error', 'message': 'Hospital not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get the current date and calculate the date range for the past week
+        today = datetime.today().date()
+        start_of_week = today - timedelta(days=today.weekday())  # Start of the current week (Monday)
+        end_of_week = start_of_week + timedelta(days=6)  # End of the week (Sunday)
+
+        # Group by dateAdded (truncated to date) and count the patients
+        patient_counts = Patient.objects.filter(
+            hospital=hospital,
+            dateAdded__date__gte=start_of_week,
+            dateAdded__date__lte=end_of_week
+        ).annotate(date_only=TruncDate('dateAdded')).values('date_only').annotate(patient_count=Count('id')).order_by('date_only')
+
+        # Format the data for the graph (7 days)
+        data_for_graph = []
+        current_day = start_of_week
+
+        # Fill in the data for each day of the week, even if no patients were added that day
+        for i in range(7):
+            day_data = next((item for item in patient_counts if item['date_only'] == current_day), None)
+            if day_data:
+                data_for_graph.append(day_data['patient_count'])
+            else:
+                data_for_graph.append(0)  # No new patients that day
+            current_day += timedelta(days=1)
+        return Response({
+            'status': 'success',
+            'data': {
+                'graph_data': {
+                    'start_day': start_of_week.strftime('%Y-%m-%d'),  # Format start date for the graph
+                    'data': data_for_graph  # 7-day patient count data
+                }
+            }
+        }, status=status.HTTP_200_OK)
+
+
+
+
+
+class SearchWorkerView(APIView):
+    def get(self, request):
+        # Get the search query from the request parameters
+        query = request.query_params.get('name', None)
+        
+        if not query:
+            return Response({'status': 'error', 'message': 'Name query parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Perform a case-insensitive search across different worker models
+        doctors = Doctor.objects.filter(Q(name__icontains=query))
+        nurses = Nurse.objects.filter(Q(name__icontains=query))
+        radiologists = Radiologist.objects.filter(Q(name__icontains=query))
+        administrative_workers = Administrative.objects.filter(Q(name__icontains=query))
+        
+        # Serialize the results
+        doctor_serializer = DoctorSerializer(doctors, many=True)
+        nurse_serializer = NurseSerializer(nurses, many=True)
+        radiologist_serializer = RadiologistSerializer(radiologists, many=True)
+        administrative_serializer = AdministrativeSerializer(administrative_workers, many=True)
+        
+        # Combine results
+        combined_data = {
+            'doctors': doctor_serializer.data,
+            'nurses': nurse_serializer.data,
+            'radiologists': radiologist_serializer.data,
+            'administrative': administrative_serializer.data,
+        }
+        
+        return Response({
+            'status': 'success',
+            'data': combined_data
+        }, status=status.HTTP_200_OK)
