@@ -50,10 +50,17 @@ class CreateHospitalView(APIView):
                 return Response({'status': 'error', 'message': 'Name and address are required'},
                                 status=status.HTTP_400_BAD_REQUEST)
 
+
             # Check if a hospital with the same name 
             if Hospital.objects.filter(name=name).exists():
                 return Response({'status': 'error', 'message': 'A hospital with this name already exists'},
                                 status=status.HTTP_400_BAD_REQUEST)
+            
+            # Check if a hospital with the same address 
+            if Hospital.objects.filter(address=address).exists():
+                return Response({'status': 'error', 'message': 'A hospital with this address already exists'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
 
 
             hospital = Hospital.objects.create(
