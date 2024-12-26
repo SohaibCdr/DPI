@@ -58,6 +58,7 @@ def create_patient():
     response = requests.post(PATIENT_API_URL, data=data)
 
     if response.status_code == 201:
+        print(data)
         print(f"Patient {data['name']} added successfully to {hospital['name']}")
     else:
         print(f"Failed to add patient: {response.json()['message']}")
@@ -103,6 +104,8 @@ def create_hospitals():
 
 create_hospitals()
 # Create workers and patients
-for _ in range(5):  # Create 5 workers and 5 patients for each hospital
-    create_worker()
-    create_patient()
+# for _ in range(5):  # Create 5 workers and 5 patients for each hospital
+    # create_worker()
+    # create_patient()
+create_patient()
+

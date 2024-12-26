@@ -101,7 +101,7 @@ class RegisterPatientView(APIView):
                 return Response({'status': 'error', 'message': 'Invalid email format'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Generate password
-            password = generate_password()
+            password = "1111" #generate_password()
             # Hash the password
             hashed_password = make_password(password)
 
