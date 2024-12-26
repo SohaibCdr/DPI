@@ -196,7 +196,6 @@ class RegisterWorkerView(APIView):
             'admin':Administrator
         }
         worker_model = worker_roles.get(role)
-
         if not worker_model:
             return Response({'status': 'error', 'message': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -204,14 +203,12 @@ class RegisterWorkerView(APIView):
             return Response({'status': 'error', 'message': 'Email already in use'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-
             # Fetch hospital if provided
             if hospital_name:
                 try:
                     hospital = Hospital.objects.get(name=hospital_name)
                 except Hospital.DoesNotExist:
                     return Response({'status': 'error', 'message': 'Hospital not found'}, status=status.HTTP_400_BAD_REQUEST)
-
             else:
                 hospital = None
             # Prepare common worker data
@@ -244,10 +241,11 @@ class RegisterWorkerView(APIView):
                 hospital.radiologist_count += 1
             elif role == 'laborantin':
                 hospital.laborantin_count += 1
-            hospital.save()
+            if hospital: 
+                hospital.save()
 
             # Generate password
-            password = generate_password()
+            password = "1111" #generate_password()
             hashed_password = make_password(password)
             credentials = UserCredentials.objects.create(
                 content_type=ContentType.objects.get_for_model(worker_model),
@@ -256,6 +254,8 @@ class RegisterWorkerView(APIView):
                 password=hashed_password,
             )
             
+            
+
             # Send email
             try:
                 pass
@@ -266,6 +266,8 @@ class RegisterWorkerView(APIView):
             # Generate JWT tokens
             refresh = RefreshToken.for_user(credentials)
             access_token = str(refresh.access_token)
+
+
 
             # Return success response
             return Response({
@@ -300,9 +302,10 @@ class LoginView(APIView):
             data = request.data
             email = data.get('email')
             password = data.get('password')
-
+            
             if not email or not password:
                 return Response({'status': 'error', 'message': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
 
             try:
                 user_credentials = UserCredentials.objects.get(email=email)
@@ -347,6 +350,7 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
+            
             return Response({'status': 'error', 'message': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
