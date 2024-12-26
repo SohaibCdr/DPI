@@ -102,6 +102,13 @@ class  Laborantin (Actor):
     )
 
 
+class  Administrator (Actor):
+    hospital = models.ForeignKey(
+        Hospital,
+        related_name='administrator',  # Unique related_name
+        on_delete=models.SET_NULL,
+        null=True
+    )
 
 class UserCredentials(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
