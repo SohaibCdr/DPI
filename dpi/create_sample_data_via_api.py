@@ -7,10 +7,10 @@ fake = Faker()
 # API endpoint for creating workers and patients
 WORKER_API_URL = "http://localhost:8000/api/register/worker/"  # Update with your actual API URL
 PATIENT_API_URL = "http://localhost:8000/api/register/patient/"  # Update with your actual API URL
-
+HOSPITAL_API_URL = "http://localhost:8000/api/hospital/create/"
 # Create hospitals first (ensure these are in the database)
 hospitals = [
-    {'id': 1, 'name': "City Hospital"},
+    {'id ': 1, 'name': "City Hospital"},
     {'id': 4, 'name': "Greenwood Medical Center"},
     {'id': 5, 'name': "Sunnydale Clinic"}
 ]
@@ -62,6 +62,46 @@ def create_patient():
     else:
         print(f"Failed to add patient: {response.json()['message']}")
 
+def create_hospital():
+    hospital = choice(hospitals)
+    data = {
+        'email': f'{fake.user_name()}@example.com',  # Valid email format
+        'name': fake.name(),
+        'SSN': fake.ssn(),
+        'gender': choice(['male', 'female']),
+        'address': fake.address(),
+        'age': randint(20, 80),
+        'logged_at': fake.date_this_decade(),
+        'hospital': hospital['name'] , # Send the hospital name
+        'phoneNumber': fake.phone_number()[:10],
+        'Gender':'male'
+    }
+
+    response = requests.post(PATIENT_API_URL, data=data)
+
+    if response.status_code == 201:
+        print(f"Patient {data['name']} added successfully to {hospital['name']}")
+    else:
+        print(f"Failed to add patient: {response.json()['message']}")
+
+
+
+
+def create_hospitals():
+    for hospital in hospitals:
+        data = {
+            'name': hospital["name"], 
+            'address': fake.address(),
+        }
+        response = requests.post(HOSPITAL_API_URL, data=data)
+
+        if response.status_code == 201:
+            print(f"Hospital created {response.json()['data']['name']}")
+        else:
+            print(f"Failed to add hospital: {response.json()['message']}")
+
+
+create_hospitals()
 # Create workers and patients
 for _ in range(5):  # Create 5 workers and 5 patients for each hospital
     create_worker()

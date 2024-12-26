@@ -142,7 +142,8 @@ class RegisterPatientView(APIView):
 
             # Send email
             try:
-                send_password_email(email, password)
+                pass
+                # send_password_email(email, password)
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': f'Failed to send email: {str(e)}'}, status=500)
 
@@ -256,7 +257,8 @@ class RegisterWorkerView(APIView):
             
             # Send email
             try:
-                send_password_email(email, password)
+                pass
+                # send_password_email(email, password)
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': f'Failed to send email: {str(e)}'}, status=500)
             
