@@ -36,7 +36,7 @@ def create_worker():
     response = requests.post(WORKER_API_URL, data=data)
 
     if response.status_code == 201:
-        print(f"Worker {data['name']} (Role: {role}) added successfully to {hospital['name']}")
+        print(f"Worker {response.json()}\n (Role: {role}) added successfully to {hospital['name']}")
     else:
         print(f"Failed to add worker: {response.json()['message']}")
 
@@ -62,7 +62,31 @@ def create_patient():
     else:
         print(f"Failed to add patient: {response.json()['message']}")
 
+ 
+def create_admin():
+    role = "admin"
+    data = {
+        'name': fake.name(),
+        'email': f'{fake.user_name()}@example.com',  # Valid email format
+        'phoneNumber': fake.phone_number()[:10],
+        'role': role,
+        'SSN': fake.ssn(),
+    }
+
+
+    response = requests.post(WORKER_API_URL, data=data)
+
+    if response.status_code == 201:
+        print(f"Worker data: \n{response.json()}")
+    else:
+        print(f"Failed to add worker: {response.json()['message']}")
+
+
 # Create workers and patients
-for _ in range(5):  # Create 5 workers and 5 patients for each hospital
-    create_worker()
-    create_patient()
+# for _ in range(5):  # Create 5 workers and 5 patients for each hospital
+#     create_worker()
+#     create_patient()
+
+# create_admin()
+# 
+create_worker()
