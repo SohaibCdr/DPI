@@ -87,6 +87,6 @@ def create_admin():
 #     create_worker()
 #     create_patient()
 
-# create_admin()
+create_admin()
 # 
-create_worker()
+#create_worker()
