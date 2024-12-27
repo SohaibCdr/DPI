@@ -221,22 +221,14 @@ class RegisterWorkerView(APIView):
             else:
                 hospital = None
             # Prepare common worker data
-            if role=="admin":
-                worker_data = {
-                'name': data.get('name'),
-                'phoneNumber': data.get('phoneNumber'),
-                'SSN': data.get('SSN'),
-                'email': email, 
+            worker_data = {
+            'name': data.get('name'),
+            'phoneNumber': data.get('phoneNumber'),
+            'SSN': data.get('SSN'),
+            'email': email,
             }
-            else:
-                worker_data = {
-                'name': data.get('name'),
-                'phoneNumber': data.get('phoneNumber'),
-                'SSN': data.get('SSN'),
-                'email': email, 
-                'hospital':hospital
-            }
-
+            if role != "admin":
+                worker_data['hospital'] = hospital
             # Handle doctor-specific field
             if role == 'doctor':
                 specialty = data.get('specialty')
