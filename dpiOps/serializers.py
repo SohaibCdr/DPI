@@ -7,3 +7,8 @@ class MedCondSerializer(serializers.ModelSerializer):
     class Meta:
         model = MedicalCondition
         fields = "__all__"
+
+class MedCareSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Care
+        fields = "__all__"

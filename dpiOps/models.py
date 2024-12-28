@@ -22,11 +22,12 @@ class Prescription (models.Model):
 
 
 class Care (models.Model):
-    observation = models.CharField(max_length=500)
-    care = models.CharField(max_length=500)
+    observation = models.CharField(max_length=500, blank=True)
+    care = models.CharField(max_length=500, blank=True)
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    date = models.DateTimeField()
+    date = models.DateTimeField(blank=True)
     medicalCondition = models.ForeignKey(MedicalCondition, on_delete=models.CASCADE, related_name="cares")
+    nurse = models.OneToOneField(Nurse, on_delete=models.SET_NULL, null=True)
     def __str__(self):
         return f"Medical Care for {self.patient.user.username}"
 
